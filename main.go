@@ -64,10 +64,13 @@ func (sourcePtr *Source) UnmarshalJSON(data []byte) error {
 	return fmt.Errorf("error parsing icestats source")
 }
 
-var listeners = promauto.NewGaugeVec(prometheus.GaugeOpts{
-	Name: "icecast_listeners",
-	Help: "Gauge representing current Icecast stream listeners",
-}, []string{"server_name", "stream_url"})
+var (
+	reg       = prometheus.NewRegistry()
+	listeners = promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
+		Name: "icecast_listeners",
+		Help: "Gauge representing current Icecast stream listeners",
+	}, []string{"server_name", "stream_url"})
+)
 
 func LoadIcecastStatus(url string) (stats *StatusRoot, err error) {
 	resp, err := http.Get(url)
@@ -152,6 +155,6 @@ func main() {
 
 	updateListeners(*urlPtr, *serverNamePtr, *waitPtr, *clockPtr, *legacyLabelPtr)
 
-	http.Handle(*endpointPtr, promhttp.Handler())
+	http.Handle(*endpointPtr, promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 	http.ListenAndServe(fmt.Sprintf(":%d", *portPtr), nil)
 }
