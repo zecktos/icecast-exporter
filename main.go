@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -80,9 +81,18 @@ func LoadIcecastStatus(url string) (stats *StatusRoot, err error) {
 
 	defer resp.Body.Close()
 
+	// convert response to string and perform string replacment because of an parsing error in icecast that
+	// breaks json if the title is blank
+	// https://stackoverflow.com/questions/30269678/icecast-json-status-xls-not-valid-json-answer-with-blank-song-title
+	respIO, ioErr := io.ReadAll(resp.Body)
+	if ioErr != nil {
+		return
+	}
+	respString := strings.ReplaceAll(string(respIO), "\"title\": -", "\"title\": null")
+
 	stats = new(StatusRoot)
 
-	json.NewDecoder(resp.Body).Decode(&stats)
+	json.NewDecoder(strings.NewReader(respString)).Decode(&stats)
 
 	return
 }
