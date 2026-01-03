@@ -2,14 +2,19 @@
 
 Icecast Exporter exports statistics from Icecast into Prometheus.
 
-We use this at [[https://urn1350.co.uk/][University Radio Nottingham]] for pulling statistics from our web streaming into a Grafana instance which is used to find listener counts in time-series.
+Fork of [[https://github.com/jb3/icecast-exporter]] with support for:
+- multiple sources
+- legacy labels to support prometheus < 3.0
+- default go metrics removed
+
+used at [[https://radiocorax.de/][Radio Corax]] for pulling statistics
 
 ** Install
 
 Ensure you have a working Go installation (minimum 1.18) and run the following:
 
 #+BEGIN_SRC
-$ go install github.com/jb3/icecast-exporter@latest
+$ go install github.com/zecktos/icecast-exporter@latest
 #+END_SRC
 
 Once installed, you will find the compiled binary at ~/home/user/go/bin/icecast-exporter~.
@@ -24,14 +29,31 @@ Once you have a binary, you can use the program with the following command line 
 | ~port~     | 2112       | ❌       | The port to listen and serve metrics from.                      |
 | ~endpoint~ | ~/metrics~ | ❌       | Endpoint to serve metrics from.                                 |
 | ~interval~ | ~15~       | ❌       | Timing interval to poll Icecast (seconds).                      |
+| ~filter~   |            | ❌       | filter for server_name, only streams with this server_name will be collected  |
+| ~legacy-label~ |        | ❌       | make label names compatible with prometheus < 3.0 (space and dot will be replaced by underscore) |
 
 An example invocation is as follows:
 
 #+BEGIN_SRC bash
-$ ./icecast-exporter -url https://icecast.example.com/status-json.xsl -port 1234
+$ ./icecast-exporter -url https://icecast.example.com/status-json.xsl -port 1234 -filter "Example Radio" -legacy-label
 #+END_SRC
 
 ** Running in the background
+An example systemd unit file might look like:
+#+BEGIN_SRC
+[Unit]
+Description=prometheus exporter for icecast listener stats
+After=multi-user.target
+
+[Service]
+ExecStart=/usr/local/bin/icecast-exporter -url https://icecast.example.com/status-json.xsl -filter "Example Radio" -legacy-label -interval 20
+Type=simple
+User=icecast-exporter
+
+[Install]
+WantedBy=multi-user.target
+#+END_SRC
+
 
 An example FreeBSD ~rc.d~ service might look like:
 
